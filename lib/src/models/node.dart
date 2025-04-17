@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
@@ -23,6 +24,13 @@ class Node<T> {
   /// An optional icon that is displayed on the [TreeNode].
   final IconData? icon;
 
+  /// An optional color that will be applied to the icon for this node.
+  final Color? iconColor;
+
+  /// An optional color that will be applied to the icon when this node
+  /// is selected.
+  final Color? selectedIconColor;
+
   /// The open or closed state of the [TreeNode]. Applicable only if the
   /// node is a parent
   final bool expanded;
@@ -32,7 +40,7 @@ class Node<T> {
   final T? data;
 
   /// The sub [Node]s of this object.
-  final List<Node<T>> children;
+  final List<Node> children;
 
   /// Force the node to be a parent so that node can show expander without
   /// having children node.
@@ -41,15 +49,17 @@ class Node<T> {
   const Node({
     required this.key,
     required this.label,
-    this.children = const [],
-    this.expanded = false,
-    this.parent = false,
+    this.children: const [],
+    this.expanded: false,
+    this.parent: false,
     this.icon,
+    this.iconColor,
+    this.selectedIconColor,
     this.data,
   });
 
   /// Creates a [Node] from a string value. It generates a unique key.
-  factory Node.fromLabel(String label) {
+  static Node<T> fromLabel<T>(String label) {
     String _key = Utilities.generateRandom();
     return Node<T>(
       key: '${_key}_$label',
@@ -63,11 +73,11 @@ class Node<T> {
   /// If the expanded value, if present, can be any 'truthful'
   /// value. Excepted values include: 1, yes, true and their
   /// associated string values.
-  factory Node.fromMap(Map<String, dynamic> map) {
+  static Node<T> fromMap<T>(Map<String, dynamic> map) {
     String? _key = map['key'];
     String _label = map['label'];
     var _data = map['data'];
-    List<Node<T>> _children = [];
+    List<Node> _children = [];
     if (_key == null) {
       _key = Utilities.generateRandom();
     }
@@ -85,7 +95,7 @@ class Node<T> {
     if (map['children'] != null) {
       List<Map<String, dynamic>> _childrenMap = List.from(map['children']);
       _children = _childrenMap
-          .map((Map<String, dynamic> child) => Node<T>.fromMap(child))
+          .map((Map<String, dynamic> child) => Node.fromMap(child))
           .toList();
     }
     return Node<T>(
@@ -103,16 +113,20 @@ class Node<T> {
   Node<T> copyWith({
     String? key,
     String? label,
-    List<Node<T>>? children,
+    List<Node>? children,
     bool? expanded,
     bool? parent,
     IconData? icon,
+    Color? iconColor,
+    Color? selectedIconColor,
     T? data,
   }) =>
       Node<T>(
         key: key ?? this.key,
         label: label ?? this.label,
         icon: icon ?? this.icon,
+        iconColor: iconColor ?? this.iconColor,
+        selectedIconColor: selectedIconColor ?? this.selectedIconColor,
         expanded: expanded ?? this.expanded,
         parent: parent ?? this.parent,
         children: children ?? this.children,
@@ -134,12 +148,15 @@ class Node<T> {
       "key": key,
       "label": label,
       "icon": icon == null ? null : icon!.codePoint,
+      "iconColor": iconColor == null ? null : iconColor!.toString(),
+      "selectedIconColor":
+          selectedIconColor == null ? null : selectedIconColor!.toString(),
       "expanded": expanded,
       "parent": parent,
       "children": children.map((Node child) => child.asMap).toList(),
     };
     if (data != null) {
-      _map['data'] = data;
+      _map['data'] = data as T;
     }
     //TODO: figure out a means to check for getter or method on generic to include map from generic
     return _map;
@@ -156,6 +173,8 @@ class Node<T> {
       key,
       label,
       icon,
+      iconColor,
+      selectedIconColor,
       expanded,
       parent,
       children,
@@ -166,10 +185,12 @@ class Node<T> {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other.runtimeType != runtimeType) return false;
-    return other is Node<T> &&
+    return other is Node &&
         other.key == key &&
         other.label == label &&
         other.icon == icon &&
+        other.iconColor == iconColor &&
+        other.selectedIconColor == selectedIconColor &&
         other.expanded == expanded &&
         other.parent == parent &&
         other.data.runtimeType == T &&
